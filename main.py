@@ -3,7 +3,21 @@ import asyncio
 import json
 import os
 from datetime import datetime
-from cores.qqbot.global_object import AstrMessageEvent
+
+# 尝试导入AstrBot的消息事件类
+try:
+    # 新版AstrBot导入方式
+    from astrbot.api import *
+except ImportError:
+    try:
+        # 旧版AstrBot导入方式
+        from cores.qqbot.global_object import AstrMessageEvent
+    except ImportError:
+        # 如果都导入失败，定义一个基本的事件类
+        class AstrMessageEvent:
+            def __init__(self):
+                self.message_str = ""
+                self.message_obj = None
 
 class NetdiskSearchPlugin:
     """
@@ -86,13 +100,17 @@ class NetdiskSearchPlugin:
             "usage": "/搜索 关键词 [页码] [参数] | /网盘帮助 | /网盘配置"
         }
         
-    def run(self, ame: AstrMessageEvent):
+    def run(self, ame):
         """
         插件运行函数
-        参数: ame: AstrMessageEvent, 消息事件
+        参数: ame: 消息事件对象
         返回: bool, (bool, str, str) 或 (bool, list, str)
         """
-        message = ame.message_str.strip()
+        # 兼容不同版本的消息对象
+        try:
+            message = ame.message_str.strip() if hasattr(ame, 'message_str') else str(ame).strip()
+        except:
+            return False, None
         
         # 检查是否是插件相关指令
         if not (message.startswith("/搜索") or message.startswith("/search") or 
@@ -224,7 +242,7 @@ class NetdiskSearchPlugin:
         else:
             return True, (False, "❌ 未知配置项", "netdisk_search")
     
-    def _check_permission(self, ame: AstrMessageEvent) -> bool:
+    def _check_permission(self, ame) -> bool:
         """检查使用权限"""
         # 如果未配置群组白名单，则允许所有群组
         if not self.enabled_groups:
@@ -235,10 +253,15 @@ class NetdiskSearchPlugin:
             return True
             
         # 检查是否在允许的群组中
-        # 这里需要根据实际的消息对象结构调整
         try:
-            # 尝试获取群组ID，具体字段可能需要调整
-            group_id = getattr(ame.message_obj, 'group_id', None)
+            # 尝试获取群组ID，根据不同版本调整
+            group_id = None
+            if hasattr(ame, 'message_obj') and ame.message_obj:
+                if hasattr(ame.message_obj, 'group_id'):
+                    group_id = ame.message_obj.group_id
+                elif hasattr(ame.message_obj, 'guild_id'):
+                    group_id = ame.message_obj.guild_id
+                    
             if group_id and str(group_id) in self.enabled_groups:
                 return True
         except:
@@ -246,18 +269,38 @@ class NetdiskSearchPlugin:
             
         return False
     
-    def _is_admin(self, ame: AstrMessageEvent) -> bool:
+    def _is_admin(self, ame) -> bool:
         """检查是否是管理员"""
         try:
-            # 尝试获取用户ID，具体字段可能需要调整
-            user_id = getattr(ame.message_obj.author, 'id', None) if hasattr(ame.message_obj, 'author') else None
+            # 尝试获取用户ID，兼容不同版本
+            user_id = None
+            if hasattr(ame, 'message_obj') and ame.message_obj:
+                if hasattr(ame.message_obj, 'author') and ame.message_obj.author:
+                    user_id = getattr(ame.message_obj.author, 'id', None)
+                elif hasattr(ame.message_obj, 'user_id'):
+                    user_id = ame.message_obj.user_id
+                elif hasattr(ame.message_obj, 'sender'):
+                    user_id = getattr(ame.message_obj.sender, 'user_id', None)
+                    
             return str(user_id) in self.admin_users if user_id else False
         except:
             return False
         
-    def _check_rate_limit(self, ame: AstrMessageEvent) -> bool:
+    def _check_rate_limit(self, ame) -> bool:
         """检查请求频率限制"""
-        user_id = getattr(ame.message_obj.author, 'id', 'unknown') if hasattr(ame.message_obj, 'author') else "unknown"
+        try:
+            # 尝试获取用户ID用于频率限制
+            user_id = "unknown"
+            if hasattr(ame, 'message_obj') and ame.message_obj:
+                if hasattr(ame.message_obj, 'author') and ame.message_obj.author:
+                    user_id = getattr(ame.message_obj.author, 'id', "unknown")
+                elif hasattr(ame.message_obj, 'user_id'):
+                    user_id = ame.message_obj.user_id
+                elif hasattr(ame.message_obj, 'sender'):
+                    user_id = getattr(ame.message_obj.sender, 'user_id', "unknown")
+        except:
+            user_id = "unknown"
+            
         current_time = datetime.now().timestamp()
         
         if user_id in self.user_last_request:
