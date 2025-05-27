@@ -1,5 +1,5 @@
-name: helloworld # 这是你的插件的唯一识别名。
-desc: 这是 AstrBot 的默认插件，支持关键词回复。 # 插件简短描述
-version: v1.3 # 插件版本号。格式：v1.1.1 或者 v1.1
-author: Soulter # 作者
-repo: https://github.com/Soulter/helloworld # 插件的仓库地址
+name: netdisk_search # 插件的唯一识别名
+desc: 网盘资源搜索插件，支持多平台网盘资源搜索，包括百度、阿里、夸克、迅雷等 # 插件简短描述
+version: v1.0.0 # 插件版本号
+author: shyshyshyyyy # 作者名字，请替换为你的名字
+repo: https://github.com/shyshyshyyyy/netdisk_search # 插件的仓库地址，请替换为你的实际仓库地址
